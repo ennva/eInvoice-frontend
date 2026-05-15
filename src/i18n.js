@@ -18,8 +18,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: localStorage.getItem('einvoicepro_language') || 'fr', // default language
-    fallbackLng: 'fr',
+    lng: localStorage.getItem('einvoicepro_language') || 'en', // default language
+    fallbackLng: 'en',
     debug: process.env.NODE_ENV === 'development',
     
     interpolation: {
