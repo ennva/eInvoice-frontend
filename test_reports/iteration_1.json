@@ -1,0 +1,39 @@
+{
+  "summary": "Frontend rendering tested at https://invoice-saas-22.preview.emergentagent.com. Landing, Login, and Register pages render correctly with proper data-testid attributes and responsive mobile layout. Unauthenticated route protection works (/dashboard -> /login redirect). CRITICAL: Backend at REACT_APP_BACKEND_URL does NOT expose the expected EInvoicePro FastAPI endpoints — every /api/v1/* path returns 404 (only /api/ returns {\"message\":\"Hello World\"}). This blocks registration, login, and ALL protected pages (dashboard, invoices, customers, etc.) from being tested end-to-end.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/api/v1/auth/register", "issue": "Returns 404 Not Found. POST with both {name,company,email,password} and {full_name,company_name,...} payloads both return 404. Frontend shows error toast 'Not Found' after submitting register form.", "priority": "CRITICAL"},
+      {"endpoint": "/api/v1/auth/login", "issue": "Returns 404 Not Found. POST request returns 404.", "priority": "CRITICAL"},
+      {"endpoint": "/api/v1/*", "issue": "Entire /api/v1 namespace is missing. The deployed backend at REACT_APP_BACKEND_URL only serves {\"message\":\"Hello World\"} at /api/. The actual EInvoicePro FastAPI backend referenced in the problem statement is not deployed/routed at this URL.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Register -> Dashboard", "issue": "Frontend submits POST /api/v1/auth/register correctly but backend returns 404 so user stays on /register with 'Not Found' toast. Cannot proceed to test any protected page (dashboard/invoices/etc).", "affected_selectors": ["[data-testid='register-submit-button']"]}
+    ],
+    "design_issues": [
+      {"screen": "Browser tab", "issues": ["Document title is 'SecuraOps | eInvoice App' which does not match the EInvoicePro branding used throughout the UI. Update public/index.html <title> to 'EInvoicePro' for consistency."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Verify which backend should serve REACT_APP_BACKEND_URL. The current deployment only serves a stub Hello World at /api/. Either (a) deploy/route the EInvoicePro FastAPI backend exposing /api/v1/auth/register, /api/v1/auth/login, /api/v1/auth/me, /api/v1/invoices, /api/v1/currencies, /api/v1/countries, /api/v1/api-keys, /api/v1/billing, /api/v1/integrations, or (b) update REACT_APP_BACKEND_URL in /app/frontend/.env to point at the correct backend host that exposes those endpoints.",
+    "Once backend is available, re-test full register -> dashboard -> invoices/new -> theme toggle -> logout flow.",
+    "Update document <title> in /app/frontend/public/index.html to match EInvoicePro brand."
+  ],
+  "critical_code_review_comments": [
+    "AuthContext.jsx: register() reads r.data.access_token and r.data.user — verify backend register endpoint actually returns this shape (some backends only return user on register and require a separate login call). If backend returns only the user, the new account will be created but isAuthenticated stays false and no redirect to /dashboard occurs.",
+    "lib/api.js: BACKEND_URL fallback uses window.location.origin which is the frontend origin — fine for production where backend is reverse-proxied, but ensure /api/v1 actually points to the FastAPI app in this environment (currently it does not).",
+    "App.js QueryClient retry:1 — request note said retry:false; current value will retry once on transient errors (acceptable, not a bug)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only request; but backend endpoints are unreachable)", "frontend": "Rendering 100%, end-to-end auth/protected flows 0% due to backend 404s"},
+  "test_credentials": "Attempted to register test+saasw102vy@einvoicepro.test / Test1234! — failed with 404 Not Found from backend.",
+  "seed_data_creation": "None — registration blocked by backend.",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Landing/Login/Register pages all render with correct data-testid (register-name-input, register-company-input, register-email-input, register-password-input, register-submit-button). Protected route guard works. The blocker is backend: every /api/v1/* path returns 404 at https://invoice-saas-22.preview.emergentagent.com. Once main agent fixes backend routing/deployment, re-run a flow that registers a fresh email, then walks through nav-dashboard, nav-invoices, /invoices/new (line items + totals), theme-toggle, user-menu-trigger -> logout-button, and mobile viewport (375x667).",
+  "rca of the issue": "Reproduction: curl -X POST https://invoice-saas-22.preview.emergentagent.com/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"name\":\"x\",\"company\":\"y\",\"email\":\"a@b.c\",\"password\":\"Test1234!\"}' -> 404 {\"detail\":\"Not Found\"}. curl https://invoice-saas-22.preview.emergentagent.com/api/ -> {\"message\":\"Hello World\"}. The backend serving REACT_APP_BACKEND_URL is not the EInvoicePro FastAPI app — it is a placeholder. Mitigation: deploy the EInvoicePro FastAPI backend and ensure ingress routes /api/v1/* to it, OR update REACT_APP_BACKEND_URL to point at the correct host. No frontend code change can fix this."
+}
