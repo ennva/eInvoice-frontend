@@ -6,47 +6,54 @@ Redesign existing React (CRA) frontend for the EInvoicePro EU e-invoicing SaaS i
 ## User Choices
 - UI framework: Tailwind + shadcn/ui
 - Language: JavaScript (no TS migration)
-- Auth: Existing JWT-based custom auth (/api/v1/auth/login, /register, /me)
+- Auth: Existing JWT-based custom auth (`/api/v1/auth/login`, `/register`, `/me`)
 - Existing repo cloned from https://github.com/ennva/eInvoice-frontend.git
-- Backend OpenAPI: EU E-Invoicing Platform - EInvoicePro API v1.0.0 (provided as openapi.json)
+- Backend OpenAPI provided by user (openapi.json). Real backend not deployed, so a mock FastAPI backend was scaffolded under `/app/backend/server.py` matching every endpoint in the openapi spec.
 
 ## Architecture Implemented
-- Modular file structure (`pages/`, `components/{layout,common,ui}`, `context/`, `lib/`)
-- Sidebar + topbar shell with dark/light theme (next-themes)
+- Modular FE file structure (`pages/`, `components/{layout,common,ui}`, `context/`, `lib/`)
+- Sidebar + topbar shell with dark/light theme (next-themes) and EN/FR i18n toggle
 - React Query for data fetching, axios interceptors for JWT
 - Framer Motion animations, Recharts visualizations
 - Plus Jakarta Sans typography, indigo→violet brand
 - Mobile responsive (sheet sidebar)
+- Cmd+K / Ctrl+K Command Palette
+- Print-to-PDF on invoice detail (print CSS hides sidebar/topbar)
 
-## Pages Implemented (P0)
-- Landing (/), Login (/login), Register (/register)
-- Dashboard (KPI cards, revenue trend chart, status mix donut, recent invoices, usage widget)
-- Invoices list (/invoices) — search, status filter, bulk select, sort, pagination, CSV export
-- Invoice create (/invoices/new) — multi-section form with live preview totals
-- Invoice detail (/invoices/:id) — parties, lines, timeline, action sidebar (sign/send/delete), UBL/CII export
-- Customers (/customers) — aggregated from invoices
-- Countries (/countries) — country rules grid
-- Currencies (/currencies) — CRUD + refresh rates
-- Integrations (/integrations) — accounting systems
-- API Keys (/api-keys) — generate/revoke
-- Billing (/billing) — plans + Stripe checkout/portal
-- Settings (/settings) — profile + theme picker
+## Backend (mock, matches openapi.json)
+- FastAPI + Motor (MongoDB), JWT bearer (HS256)
+- Endpoints: auth (register/login/me/logout), invoices CRUD + bulk-sign + bulk-send + sign + send + validate + export + history, currencies CRUD + refresh-rates, countries (9 EU) + required-fields, api-keys, billing usage/checkout/portal, integrations
+- Tested by pytest: 16/16 passing
+- Currencies seeded on first call (EUR base, USD, GBP, CHF)
 
-## Backend API Endpoints Wired
-- /api/v1/auth/login, /register, /me, /logout
-- /api/v1/invoices/ (CRUD), /bulk-sign, /bulk-send, /{id}/sign, /send, /validate, /export, /history
-- /api/v1/currencies, /api/v1/countries, /api/v1/integrations
-- /api/v1/api-keys, /api/v1/billing/usage, /checkout, /portal
+## Pages Implemented
+- Landing, Login (split-screen, password toggle, remember-me), Register
+- Dashboard (KPI cards, revenue line chart, status donut, recent invoices, usage)
+- Invoices list (search, status filter, sort, bulk select+sign+send, CSV export, pagination)
+- Invoice create (multi-section form, live preview totals)
+- Invoice detail (parties, lines, timeline, action sidebar with Sign/Send/Delete, Print/PDF + UBL + CII + Validate)
+- Customers (aggregated from invoices)
+- Countries (9 EU rules)
+- Currencies (CRUD + refresh rates)
+- Integrations (accounting systems)
+- API Keys (generate one-time secret, revoke)
+- Billing (3 plans + Stripe-style checkout/portal)
+- Settings (profile + theme picker)
 
-## Implemented (Date: 2026-01)
-- Full redesign delivered, all pages render, sidebar shell, theme toggle, mobile responsive.
-- Tested via testing_agent_v3 iteration_1: Landing/Login/Register render 100%, all data-testid present, protected route guard works.
+## What's been implemented (2026-01)
+- Iter 1: Full redesign + modular architecture. Landing/Login/Register all rendered correctly; blocker = real backend missing.
+- Iter 2: Mock FastAPI backend scaffolded matching openapi.json + Command Palette + PDF print + EN/FR i18n toggle. Full E2E verified by testing agent: 100% backend pass, 95% frontend pass (only minor cosmetic notes addressed).
 
-## Known External Dependency
-- REACT_APP_BACKEND_URL must point to the deployed EInvoicePro FastAPI backend. The placeholder at the preview URL only returns Hello World at /api/. Once the user updates REACT_APP_BACKEND_URL to their real backend (or deploys it under this preview URL), all authenticated flows will work end-to-end.
+## Test credentials
+See `/app/memory/test_credentials.md`. Demo user: `demo@example.com` / `Demo1234!`.
 
 ## P1 Backlog
-- Drag-drop file uploads, command palette (Cmd+K), notifications center, audit log UI, PDF export from detail page, advanced country rule editor
+- Replace native date inputs with shadcn Calendar/DatePicker for locale-consistent UX
+- Drag-drop file uploads for attaching documents to invoices
+- Notifications center (real-time toasts feed)
+- Audit log UI (use `/invoices/{id}/history` endpoint)
+- Real PDF generation server-side (using e.g. weasyprint) instead of browser print
 
 ## P2 Backlog
-- TypeScript migration, PWA support, offline drafts, i18n (FR/EN already partially scaffolded in /locales)
+- TypeScript migration, PWA support, offline drafts, command palette fuzzy search across more entities
+- Real Stripe billing wiring, real Storecove/Peppol routing
