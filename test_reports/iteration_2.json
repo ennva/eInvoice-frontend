@@ -1,0 +1,40 @@
+{
+  "summary": "Full E2E test of EInvoicePro after mock FastAPI backend was scaffolded. Backend smoke + integration suite (16 tests) passes 100%. Frontend: login (demo@example.com/Demo1234!) -> dashboard -> invoice create with live preview total (10 x €100 + 20% VAT = €1,200) -> save -> redirect to /invoices/{id} -> Sign + Validate actions update status correctly -> invoice list shows new row. Currencies (EUR/USD/GBP/CHF), Countries (9 EU), API Keys, theme toggle (light/dark), language toggle (EN/FR), Cmd+K command palette, UBL export (HTTP 200 + valid XML), all sidebar nav items work. Few minor UX/cosmetic issues only.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InvoiceDetail header", "issue": "Two 'Validated' status badges render side-by-side (status badge + signature badge both labelled 'Validated' after sign+validate). Label one as 'Signed' / 'Validated' or differentiate visually.", "selector": "[data-testid='status-draft']", "priority": "LOW"},
+      {"component": "UBL/CII export buttons", "issue": "export-ubl-btn / export-cii-btn navigate the browser to the API URL (returns raw XML inline) instead of triggering a blob download. Second navigation without Authorization header returns 404 if user reloads. Suggest fetch -> Blob -> a.download.", "selector": "[data-testid='export-ubl-btn']", "priority": "MEDIUM"},
+      {"component": "InvoiceCreate date inputs", "issue": "Uses native browser <input type=date> (mm/dd/yyyy) instead of shadcn Calendar/DatePicker component. Inconsistent with rest of shadcn UI and locale-dependent (US format on EN, EU expected).", "selector": "[data-testid='issue-date-input']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard charts", "issues": ["Recharts ResponsiveContainer logs width(-1)/height(-1) warnings on first paint — chart container needs explicit min-height to avoid the warning."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_einvoicepro.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(MEDIUM) Make UBL/CII export buttons trigger a real download (fetch with bearer token -> Blob -> a[download]) instead of navigating the tab to the API URL.",
+    "(LOW) Differentiate the two status badges on InvoiceDetail (status vs signature_status) so users don't see two identical 'Validated' chips.",
+    "(LOW) Replace native date inputs in InvoiceCreate with shadcn Calendar/DatePicker for locale-consistent UX.",
+    "(LOW) Add min-height to recharts ResponsiveContainer on the dashboard to silence width/height(-1) warnings."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py: bcrypt.checkpw is sync I/O inside an async handler. Acceptable for mock workload but in production should run in a thread executor (asyncio.to_thread).",
+    "backend/server.py: seed_currencies() runs lazily inside GET /currencies/ — first request can race if hit concurrently. Move to a FastAPI @app.on_event('startup') to be idempotent.",
+    "backend/server.py: legacy_root only — there is no /api/ health alias, while frontend's lib/api.js prefixes everything with /api/v1, which is fine; just confirming the router prefixes match openapi.json.",
+    "frontend Topbar.jsx: logout testid is 'menu-logout' (not 'logout-btn' as named in the test request) — keep this in mind for next agent's selectors.",
+    "frontend AuthContext.jsx + lib/api.js: BACKEND_URL works correctly via REACT_APP_BACKEND_URL; demo user is already seeded and works end-to-end."
+  ],
+  "updated_files": ["/app/backend/tests/test_einvoicepro.py"],
+  "success_rate": {"backend": "100% (16/16 pytest)", "frontend": "~95% (1 medium download-UX issue, 2 minor cosmetic)"},
+  "test_credentials": "demo@example.com / Demo1234! (works). Pytest also registers ephemeral test+saas_<hex>@example.com users.",
+  "seed_data_creation": "Pytest creates ~1 user + 1 invoice + 1 currency + 1 API key per run. UI test created invoice TEST-INV-001 for the demo user.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend at /api/v1/* fully works against the URL in REACT_APP_BACKEND_URL. Correct testids: email-input, password-input, login-submit-btn (login); register-name-input, register-company-input, register-email-input, register-password-input, register-submit-button (register). Topbar logout testid = 'menu-logout'. Invoice create testids: invoice-number-input, issue-date-input, supplier-name-input, customer-name-input, line-name-0, line-qty-0, line-price-0, line-vat-0, save-invoice-btn, preview-total. Invoice detail testids: sign-btn, send-btn, delete-btn, validate-btn, export-ubl-btn, export-cii-btn, export-pdf-btn. Email validator rejects .test/.local — use @example.com or @gmail.com.",
+  "rca of the issue": "N/A — no blocking bugs this iteration. Only minor UX recommendations."
+}
